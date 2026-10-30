@@ -5,6 +5,9 @@ import { BUCKET_LABEL, GROUPS, KIND_LABEL, UNCATEGORIZED } from "@/lib/defaults"
 import { planAnalysis } from "@/lib/analytics";
 import { pct, uid, usd } from "@/lib/format";
 import { Card, Kpi } from "./ui";
+import CsvImport from "./CsvImport";
+import { budgetToCSV } from "@/lib/csv";
+import { download } from "@/lib/io";
 
 export default function BudgetPlan({ d, store }: TabProps) {
   const p = planAnalysis(d);
@@ -57,7 +60,13 @@ export default function BudgetPlan({ d, store }: TabProps) {
         </table>
       </Card>
 
-      <Card title="예산 항목" sub="성격(고정/변동/저축)과 분류(필수/선택/헌금/저축)는 모든 분석의 기준이 됩니다. 예산을 바꿔도 지난 달 분석은 당시 예산으로 유지돼요." right={<button className="btn text-xs" onClick={addCat}>+ 항목 추가</button>}>
+      <Card title="예산 항목" sub="성격(고정/변동/저축)과 분류(필수/선택/헌금/저축)는 모든 분석의 기준이 됩니다. 예산을 바꿔도 지난 달 분석은 당시 예산으로 유지돼요." right={
+          <div className="flex flex-wrap justify-end gap-2">
+            <CsvImport d={d} store={store} expect="budget" label="예산 CSV 가져오기" className="btn text-xs" />
+            <button className="btn text-xs" onClick={() => download("예산.csv", budgetToCSV(d), "text/csv;charset=utf-8")}>예산 CSV 내보내기</button>
+            <button className="btn text-xs" onClick={addCat}>+ 항목 추가</button>
+          </div>
+        }>
         <div className="overflow-x-auto">
           <table className="data">
             <thead>

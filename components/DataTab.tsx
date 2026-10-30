@@ -6,6 +6,8 @@ import { download, exportReport, importLegacyExcel, transactionsCSV } from "@/li
 import { migrate } from "@/lib/store";
 import { usd } from "@/lib/format";
 import { Card } from "./ui";
+import CsvImport from "./CsvImport";
+import { budgetToCSV, txnTemplateCSV } from "@/lib/csv";
 
 export default function DataTab({ d, store, month }: TabProps) {
   const xl = useRef<HTMLInputElement>(null);
@@ -53,7 +55,19 @@ export default function DataTab({ d, store, month }: TabProps) {
     <div className="grid gap-4 lg:grid-cols-2">
       {msg && <div className="rounded-lg border border-line bg-surface-2 px-4 py-3 text-sm lg:col-span-2">{msg}</div>}
 
-      <Card title="가져오기" sub="기존 ‘현성 세연 가계부’ 엑셀(월별 시트) 형식을 그대로 읽습니다. 같은 거래는 중복으로 들어가지 않아요.">
+      <Card title="CSV로 입력" sub="파일 머리글을 보고 예산 CSV인지 거래 CSV인지 자동으로 판별해요. 같은 거래는 중복으로 들어가지 않아요.">
+        <div className="flex flex-wrap gap-2">
+          <CsvImport d={d} store={store} className="btn btn-primary" label="CSV 가져오기 (예산/거래)" onMessage={setMsg} />
+          <button className="btn" onClick={() => download("예산.csv", budgetToCSV(d), "text/csv;charset=utf-8")}>예산 CSV 양식(현재 예산)</button>
+          <button className="btn" onClick={() => download("거래내역_양식.csv", txnTemplateCSV(d), "text/csv;charset=utf-8")}>거래 CSV 양식</button>
+        </div>
+        <div className="mt-3 space-y-1 text-xs text-ink-2">
+          <p><b className="text-ink">예산 CSV</b> 머리글: 구분, 항목, 그룹, 성격(고정/변동/저축), 분류(필수/선택/헌금·기부/저축), 월예산, 납부일, 결제자 — 구분이 ‘수입’인 행은 수입원으로 들어가요.</p>
+          <p><b className="text-ink">거래 CSV</b> 머리글: 날짜(2026-11-01 또는 11/1/2026), 구분(수입/지출), 카테고리(예산 항목 이름), 금액, 결제자, 계좌, 메모</p>
+        </div>
+      </Card>
+
+      <Card title="엑셀 가져오기" sub="기존 ‘현성 세연 가계부’ 엑셀(월별 시트) 형식을 그대로 읽습니다. 같은 거래는 중복으로 들어가지 않아요.">
         <div className="flex flex-wrap gap-2">
           <button className="btn btn-primary" disabled={busy} onClick={() => xl.current?.click()}>{busy ? "읽는 중…" : "엑셀 가계부 가져오기 (.xlsx)"}</button>
           <button className="btn" onClick={() => js.current?.click()}>백업 복원 (.json)</button>

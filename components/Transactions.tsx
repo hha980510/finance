@@ -6,6 +6,8 @@ import { monthTxns } from "@/lib/analytics";
 import { todayISO, uid, usd } from "@/lib/format";
 import { download, transactionsCSV } from "@/lib/io";
 import { Card, Empty, Money } from "./ui";
+import CsvImport from "./CsvImport";
+import { txnTemplateCSV } from "@/lib/csv";
 
 const blank = (month: string, people: string[]): Omit<Txn, "id"> => {
   const t = todayISO();
@@ -79,7 +81,13 @@ export default function Transactions({ d, store, month }: TabProps) {
 
   return (
     <div className="space-y-4">
-      <Card title={editing ? "거래 수정" : "거래 추가"} right={<button className="btn" onClick={autoFill}>고정지출·수입 자동 입력</button>}>
+      <Card title={editing ? "거래 수정" : "거래 추가"} right={
+          <div className="flex flex-wrap justify-end gap-2">
+            <CsvImport d={d} store={store} expect="transactions" />
+            <button className="btn" onClick={() => download("거래내역_양식.csv", txnTemplateCSV(d), "text/csv;charset=utf-8")}>CSV 양식</button>
+            <button className="btn" onClick={autoFill}>고정지출·수입 자동 입력</button>
+          </div>
+        }>
         <form onSubmit={submit} className="grid grid-cols-2 gap-2 md:grid-cols-[130px_100px_1fr_120px_100px_1.4fr_auto]">
           <input type="date" className="field tnum" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required aria-label="날짜" />
           <select className="field" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as Txn["type"] })} aria-label="구분">
