@@ -83,7 +83,7 @@ export default function Transactions({ d, store, month }: TabProps) {
     <div className="space-y-4">
       <Card title={editing ? "거래 수정" : "거래 추가"} right={
           <div className="flex flex-wrap justify-end gap-2">
-            <CsvImport d={d} store={store} expect="transactions" />
+            <CsvImport d={d} store={store} expect="transactions" onImported={(ms) => { if (ms.some((m) => m !== month)) setAllMonths(true); }} />
             <button className="btn" onClick={() => download("거래내역_양식.csv", txnTemplateCSV(d), "text/csv;charset=utf-8")}>CSV 양식</button>
             <button className="btn" onClick={autoFill}>고정지출·수입 자동 입력</button>
           </div>

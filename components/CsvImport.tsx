@@ -6,18 +6,32 @@ import { budgetFromCSV, detectCSV, parseCSV, txnsFromCSV } from "@/lib/csv";
 import { usd } from "@/lib/format";
 
 /** CSV 파일 하나로 예산 또는 거래내역을 가져오기 (헤더로 자동 판별) */
-export default function CsvImport({ d, store, expect, label = "CSV 가져오기", className = "btn", onMessage }: { d: AppData; store: Store; expect?: "budget" | "transactions"; label?: string; className?: string; onMessage?: (m: string) => void }) {
+/** 엑셀(윈도우)에서 그냥 ‘CSV’로 저장하면 EUC-KR(CP949)이라 한글이 깨짐 → 자동 판별 */
+async function readText(f: File) {
+  const buf = await f.arrayBuffer();
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buf);
+  } catch {
+    return new TextDecoder("euc-kr").decode(buf);
+  }
+}
+
+export default function CsvImport({ d, store, expect, label = "CSV 가져오기", className = "btn", onMessage, onImported }: { d: AppData; store: Store; expect?: "budget" | "transactions"; label?: string; className?: string; onMessage?: (m: string) => void; onImported?: (months: string[]) => void }) {
   const ref = useRef<HTMLInputElement>(null);
   const say = onMessage ?? ((m: string) => alert(m));
 
   const onFile = async (f?: File) => {
     if (!f) return;
     try {
-      const rows = parseCSV(await f.text());
+      const rows = parseCSV(await readText(f));
       const kind = detectCSV(rows);
       if (kind === "unknown") return say("CSV 형식을 알 수 없어요. 첫 줄에 머리글이 필요해요.\n· 예산: 구분, 항목, 그룹, 성격, 분류, 월예산, 납부일, 결제자\n· 거래: 날짜, 구분, 카테고리, 금액, 결제자, 계좌, 메모");
       if (expect && kind !== expect) {
-        if (!confirm(`이 파일은 ${kind === "budget" ? "예산" : "거래내역"} CSV로 보여요. 그대로 가져올까요?`)) return;
+        const msg =
+          kind === "budget"
+            ? "이 파일은 거래내역이 아니라 ‘예산’ CSV예요 (날짜 열이 없음).\n가져오면 거래가 추가되는 게 아니라 예산 항목이 이 파일 내용으로 바뀌어요.\n\n거래를 넣으려면 ‘CSV 양식’ 버튼으로 받은 거래 양식(날짜, 구분, 카테고리, 금액…)을 쓰세요.\n\n그래도 예산으로 가져올까요?"
+            : "이 파일은 예산이 아니라 ‘거래내역’ CSV예요. 거래로 추가할까요?";
+        if (!confirm(msg)) return;
       }
       if (kind === "budget") {
         const r = budgetFromCSV(rows, d);
@@ -36,7 +50,9 @@ export default function CsvImport({ d, store, expect, label = "CSV 가져오기"
         const msg = `거래 ${r.fresh.length}건을 추가할까요?\n지출 ${usd(out, 2)} · 수입 ${usd(inc, 2)}${r.skipped ? `\n중복 ${r.skipped}건은 건너뜀` : ""}${r.unmatched.length ? `\n\n없는 카테고리 → 미분류: ${r.unmatched.join(", ")}` : ""}${r.errors.length ? `\n\n건너뛴 행 ${r.errors.length}개: ${r.errors.slice(0, 3).join(", ")}` : ""}`;
         if (!confirm(msg)) return;
         store.update((x) => ({ ...x, transactions: [...x.transactions, ...r.fresh] }));
-        say(`거래 ${r.fresh.length}건을 가져왔어요.${r.unmatched.length ? ` 미분류로 들어간 카테고리: ${r.unmatched.join(", ")}` : ""}`);
+        const months = [...new Set(r.fresh.map((t) => t.date.slice(0, 7)))].sort();
+        onImported?.(months);
+        say(`거래 ${r.fresh.length}건을 가져왔어요 (${months.map((m) => `${Number(m.slice(5))}월`).join(", ")}).${r.unmatched.length ? `\n미분류로 들어간 카테고리: ${r.unmatched.join(", ")}` : ""}`);
       }
     } catch (e) {
       say("CSV를 읽지 못했어요: " + (e as Error).message);
